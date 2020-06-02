@@ -2,7 +2,6 @@
 
 import datetime
 import enum
-import functools
 import itertools
 import json
 import random
@@ -174,10 +173,10 @@ def _show_for_humans(data):
     if data:
         for dt in data:
             dtstr = dt.strftime("%d/%m/%Y (%H:%M)")
-            print(f"😺 Fecha libre: {dtstr}")
+            print(f"😺 Free slot: {dtstr}")
 
     else:
-        print("😿 Sin fechas")
+        print("😿 No available slots")
 
 
 class NoSlots(Exception):
@@ -229,10 +228,6 @@ def main(argv):
     args.center = Center.from_arg(args.center)
     args.vehicle = VehicleSize.from_arg(args.vehicle_size)
 
-    custom_query = functools.partial(
-        query, center=args.center, vehicle_size=args.vehicle
-    )
-
     available = []
 
     for i in itertools.count():
@@ -242,10 +237,12 @@ def main(argv):
         date = _get_monday(weeks_ahead=i)
         # print(f"Check {date!r}")
         try:
-            results = custom_query(date=date)
+            results = query(
+                center=args.center, vehicle_size=args.vehicle, date=date
+            )
 
         except (InvalidResponse, ParseError):
-            print("💥 Error interno", file=sys.stderr)
+            print("💥 Internal error", file=sys.stderr)
             return
 
         except NoSlots:
