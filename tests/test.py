@@ -19,18 +19,21 @@ def read_sample(name):
         return fh.read()
 
 
+def idx_data(data):
+    return data[0:-1], data[-1]
+
+
 class ParserTest(unittest.TestCase):
     def test_simple_no_slots(self):
         data = itv.parse(read_sample("2020-06-01.html"))
+        data = dict(map(idx_data, data))
+        self.assertFalse(any(data.values()))
 
-        self.assertEqual(len(data), 7)
-        self.assertEqual(list(data.values()), [False] * 7)
-
-    def test_simple_no_slotsslots(self):
+    def test_with_available(self):
         data = itv.parse(read_sample("2020-06-08.html"))
-
-        self.assertEqual(len(data), 7)
-        self.assertTrue(True in list(data.values()))
+        data = dict(map(idx_data, data))
+        self.assertTrue(any(data.values()))
+        self.assertTrue(data[('06', '10', '18', '30')])
 
     def test_no_agenda(self):
         with self.assertRaises(itv.NoData):

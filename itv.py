@@ -3,6 +3,7 @@
 import datetime
 import enum
 import random
+import re
 import time
 import urllib
 
@@ -44,7 +45,7 @@ class InvalidResponse(Exception):
     pass
 
 
-def parse(buff):
+def parse_(buff):
     def get_day(slot):
         return next(slot.parent.children)
 
@@ -71,6 +72,49 @@ def parse(buff):
     return results
 
 
+def parse(buff):
+    soup = bs4.BeautifulSoup(buff, features="html5lib")
+
+    # Parse slots in agenda
+    # in_day_slots = [
+    #     ('07', '00'),
+    #     ('07', '15'),
+    #     ('07', '30'),
+    #     ('07', '45'),
+    #     ....
+    in_day_slots = soup.select("table#tablaDocs th b")
+    in_day_slots = [x.text for x in in_day_slots]
+    in_day_slots = [re.search(r"(\d+)(\d{2})", x) for x in in_day_slots]
+    in_day_slots = [m.groups() for m in in_day_slots if m]
+
+    slots = soup.select("td")
+    if not slots:
+        raise NoData()
+
+    ret = []
+    for row in soup.select("table#tablaDocs tr"):
+        day_cell = row.select_one("td")
+        if not day_cell:
+            continue
+
+        m = re.search(r"(\d+)/(\d+)", day_cell.text)
+        if not m:
+            continue
+
+        curr_day, curr_month = m.groups()
+
+        for (idx, cell) in enumerate(list(row.select("td"))[1:]):
+            cell_classes = cell.attrs.get("class") or []
+            available = (
+                "pasado" not in cell_classes and "ocupado" not in cell_classes
+            )
+            ret.append(
+                (curr_month, curr_day) + in_day_slots[idx] + (available,)
+            )
+
+    return ret
+
+
 def _get_monday(base=None, weeks_ahead=0):
     if base is None:
         base = datetime.datetime.now()
@@ -83,14 +127,24 @@ def query(center_code, vehicle_class=VehicleClass.LIGHT, date=None):
     date = _get_monday(date)
     buff = fetch(
         center_code=center_code, vehicle_class=vehicle_class, date=date
-    ).decode('utf-8')
+    ).decode("utf-8")
 
     data = parse(buff)
+    data = [
+        (
+            datetime.datetime(
+                year=date.year,
+                month=int(x[0]),
+                day=int(x[1]),
+                hour=int(x[2]),
+                minute=int(x[3]),
+            ),
+            x[4],
+        )
+        for x in data
+    ]
 
-    import ipdb
-
-    ipdb.set_trace()
-    pass
+    return data
 
 
 def fetch(center_code, vehicle_class=VehicleClass.LIGHT, date=None):
