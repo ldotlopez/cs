@@ -1,12 +1,35 @@
 #!/usr/bin/env python3
 
 import datetime
+import enum
 import random
 import time
 import urllib
 
 import bs4
-import requests
+
+_ORIGIN = "http://www.itvcvr.com"
+_QUERY_URL = "http://www.itvcvr.com/citaprevia/index.php"
+_UA = (
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:76.0)"
+    "Gecko/20100101 Firefox/76.0"
+)
+_DEFAULT_HEADERS = {
+    "User-Agent": _UA,
+    "Accept": "*/*",
+    "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
+    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    "X-Requested-With": "XMLHttpRequest",
+    "Origin": _ORIGIN,
+    "Connection": "close",
+    "Referer": _QUERY_URL,
+    "Pragma": "no-cache",
+    "Cache-Control": "no-cache",
+}
+
+
+class VehicleClass(enum.Enum):
+    LIGHT = "Ligeros"
 
 
 class NoData(Exception):
@@ -48,50 +71,44 @@ def parse(buff):
     return results
 
 
-def fetch(sess, date=None, mock=False):
-    if date is None:
-        date = datetime.datetime.now()
+def _get_monday(base=None, weeks_ahead=0):
+    if base is None:
+        base = datetime.datetime.now()
+    base = base - datetime.timedelta(days=base.weekday())
 
-    monday = date - datetime.timedelta(days=date.weekday())
+    return base + datetime.timedelta(days=7 * weeks_ahead)
 
-    if mock is True:
-        with open(monday.strftime("%Y-%m-%d.html"),) as fh:
-            return fh.read()
 
-    req = requests.Request(
-        url="http://www.itvcvr.com/citaprevia/index.php",
-        method="POST",
-        data=urllib.parse.urlencode(
-            dict(
-                ajax="cargarDatosTablaFechas",
-                fecha=monday.strftime("%Y-%m-%d"),
-                centro="1201",
-                tipoVehiculo="Ligeros",
-            )
-        ),
-        headers={
-            "User-Agent": (
-                "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:76.0)"
-                "Gecko/20100101 Firefox/76.0"
-            ),
-            "Accept": "*/*",
-            "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
-            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "X-Requested-With": "XMLHttpRequest",
-            "Origin": "http://www.itvcvr.com",
-            "Connection": "close",
-            "Referer": "http://www.itvcvr.com/citaprevia/index.php",
-            "Pragma": "no-cache",
-            "Cache-Control": "no-cache",
-        },
+def query(center_code, vehicle_class=VehicleClass.LIGHT, date=None):
+    date = _get_monday(date)
+    buff = fetch(
+        center_code=center_code, vehicle_class=vehicle_class, date=date
+    ).decode('utf-8')
+
+    data = parse(buff)
+
+    import ipdb
+
+    ipdb.set_trace()
+    pass
+
+
+def fetch(center_code, vehicle_class=VehicleClass.LIGHT, date=None):
+    payload = dict(
+        ajax="cargarDatosTablaFechas",
+        fecha=date.strftime("%Y-%m-%d"),
+        centro=center_code,
+        tipoVehiculo=vehicle_class.value,
     )
-
-    resp = sess.send(req.prepare())
-    if resp.status_code != 200:
+    payload = urllib.parse.urlencode(payload)
+    req = urllib.request.Request(
+        _QUERY_URL, method="POST", data=payload, headers=_DEFAULT_HEADERS
+    )
+    resp = urllib.request.urlopen(req)
+    if resp.status != 200:
         raise InvalidResponse(resp)
 
-    resp.close()
-    return resp.text
+    return resp.read()
 
 
 def main():
@@ -100,18 +117,20 @@ def main():
     found = False
     weeks_ahead = 0
 
+    # Initial date is past monday (or today if it's monday)
+    basedate = datetime.datetime.now()
+    basedate = basedate - datetime.timedelta(days=basedate.weekday())
+
     while True:
         if weeks_ahead >= 10:
             print("😿 Sin fechas")
             break
 
-        date = datetime.datetime.now() + datetime.timedelta(
-            days=7 * weeks_ahead
-        )
+        date = basedate + datetime.timedelta(days=7 * weeks_ahead)
 
         # Fetch data or die
         try:
-            buff = fetch(sess, date, mock=False)
+            buff = fetch(sess, "1201", date=date)
         except InvalidResponse:
             print("🙀 Error al cargar datos")
             break
