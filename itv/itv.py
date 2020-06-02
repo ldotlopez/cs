@@ -45,12 +45,10 @@ class Center(enum.Enum):
             "vinaros": cls.VINAROS,
             "port-sagunt": cls.PORT_SAGUNT,
         }
-        try:
+        if arg in m:
             return m[arg]
-        except KeyError:
-            pass
-
-        raise ValueError(arg)
+        else:
+            raise ValueError(arg)
 
 
 class VehicleSize(enum.Enum):
@@ -60,15 +58,13 @@ class VehicleSize(enum.Enum):
     @classmethod
     def from_arg(cls, arg):
         m = {"light": cls.LIGHT, "heavy": cls.HEAVY}
-        try:
+        if arg in m:
             return m[arg]
-        except KeyError:
-            pass
-
-        raise ValueError(arg)
+        else:
+            raise ValueError(arg)
 
 
-def fetch(center, vehicle_size, date=None):
+def fetch(center, vehicle_size, date):
     payload = dict(
         ajax="cargarDatosTablaFechas",
         fecha=date.strftime("%Y-%m-%d"),
@@ -88,7 +84,10 @@ def fetch(center, vehicle_size, date=None):
     return resp.read()
 
 
-def parse(buff):
+def parse(buff, year=None):
+    if year is None:
+        year = datetime.datetime.now().year
+
     soup = bs4.BeautifulSoup(buff, features="html5lib")
 
     # Parse slots in agenda
@@ -128,20 +127,10 @@ def parse(buff):
                 (curr_month, curr_day) + in_day_slots[idx] + (available,)
             )
 
-    return ret
-
-
-def query(center=Center.CASTELLO, vehicle_size=VehicleSize.LIGHT, date=None):
-    date = _get_monday(date)
-    buff = fetch(center=center, vehicle_size=vehicle_size, date=date).decode(
-        "utf-8"
-    )
-
-    data = parse(buff)
-    data = [
+    ret = [
         (
             datetime.datetime(
-                year=date.year,
+                year=year,
                 month=int(x[0]),
                 day=int(x[1]),
                 hour=int(x[2]),
@@ -149,18 +138,50 @@ def query(center=Center.CASTELLO, vehicle_size=VehicleSize.LIGHT, date=None):
             ),
             x[4],
         )
-        for x in data
+        for x in ret
     ]
 
-    return data
+    return ret
 
 
-def _get_monday(base=None, weeks_ahead=0):
-    if base is None:
-        base = datetime.datetime.now()
-    base = base - datetime.timedelta(days=base.weekday())
+def _query(center, vehicle_size, date):
+    buff = fetch(center=center, vehicle_size=vehicle_size, date=date)
+    buff = buff.decode("utf-8")
+    res = parse(buff, year=date.year)
 
-    return base + datetime.timedelta(days=7 * weeks_ahead)
+    return res
+
+
+def query(
+    center=Center.CASTELLO,
+    vehicle_size=VehicleSize.LIGHT,
+    date=None,
+    weeks_ahead=1,
+    quick=False,
+):
+    if date is None:
+        date = datetime.datetime.now()
+
+    ret = []
+    for week in range(weeks_ahead):
+        try:
+            part = _query(
+                center=center,
+                vehicle_size=vehicle_size,
+                date=date + datetime.timedelta(days=7 * week),
+            )
+
+        except NoSlots:
+            break
+
+        if quick:
+            available = [x for x in part if x[1]]
+            if available:
+                return [available[0]]
+
+        ret.extend(part)
+
+    return ret
 
 
 def _show_for_machines(data):
@@ -171,7 +192,7 @@ def _show_for_machines(data):
 
 def _show_for_humans(data):
     if data:
-        for dt in data:
+        for dt in (x[0] for x in data if x[1]):
             dtstr = dt.strftime("%d/%m/%Y (%H:%M)")
             print(f"😺 Free slot: {dtstr}")
 
@@ -207,7 +228,7 @@ def main(argv):
         "--weeks",
         dest="weeks_ahead",
         type=int,
-        default=6,
+        default=1,
         help="How many weeks ahead to check",
     )
 
@@ -228,41 +249,17 @@ def main(argv):
     args.center = Center.from_arg(args.center)
     args.vehicle = VehicleSize.from_arg(args.vehicle_size)
 
-    available = []
-
-    for i in itertools.count():
-        if i >= args.weeks_ahead:
-            break
-
-        date = _get_monday(weeks_ahead=i)
-        # print(f"Check {date!r}")
-        try:
-            results = query(
-                center=args.center, vehicle_size=args.vehicle, date=date
-            )
-
-        except (InvalidResponse, ParseError):
-            print("💥 Internal error", file=sys.stderr)
-            return
-
-        except NoSlots:
-            break
-
-        week_free_slots = [dt for (dt, available) in results if available]
-        if not week_free_slots:
-            time.sleep(3 + random.randint(-2, 2))
-            continue
-
-        if args.quick:
-            available = [week_free_slots[0]]
-            break
-        else:
-            available.extend(week_free_slots)
+    res = query(
+        center=args.center,
+        vehicle_size=args.vehicle,
+        weeks_ahead=args.weeks_ahead,
+        quick=args.quick,
+    )
 
     if args.json:
-        _show_for_machines(available)
+        _show_for_machines(res)
     else:
-        _show_for_humans(available)
+        _show_for_humans(res)
 
 
 if __name__ == "__main__":
