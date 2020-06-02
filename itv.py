@@ -259,7 +259,7 @@ def main(argv):
         else:
             available.extend(week_free_slots)
 
-    if json:
+    if args.json:
         _show_for_machines(available)
     else:
         _show_for_humans(available)
