@@ -2,6 +2,9 @@
 
 import datetime
 import enum
+import functools
+import itertools
+import json
 import random
 import re
 import time
@@ -29,47 +32,61 @@ _DEFAULT_HEADERS = {
 }
 
 
-class VehicleClass(enum.Enum):
+class Center(enum.Enum):
+    CASTELLO = "1201"
+    VILA_REAL = "1202"
+    VINAROS = "1203"
+    PORT_SAGUNT = "4612"
+
+    @classmethod
+    def from_arg(cls, arg):
+        m = {
+            "castello": cls.CASTELLO,
+            "vila-real": cls.VILA_REAL,
+            "vinaros": cls.VINAROS,
+            "port-sagunt": cls.PORT_SAGUNT,
+        }
+        try:
+            return m[arg]
+        except KeyError:
+            pass
+
+        raise ValueError(arg)
+
+
+class VehicleSize(enum.Enum):
     LIGHT = "Ligeros"
+    HEAVY = "Pesados"
+
+    @classmethod
+    def from_arg(cls, arg):
+        m = {"light": cls.LIGHT, "heavy": cls.HEAVY}
+        try:
+            return m[arg]
+        except KeyError:
+            pass
+
+        raise ValueError(arg)
 
 
-class NoData(Exception):
-    pass
+def fetch(center, vehicle_size, date=None):
+    payload = dict(
+        ajax="cargarDatosTablaFechas",
+        fecha=date.strftime("%Y-%m-%d"),
+        centro=center.value,
+        tipoVehiculo=vehicle_size.value,
+    )
+    payload = urllib.parse.urlencode(payload).encode("utf-8")
 
+    req = urllib.request.Request(
+        _QUERY_URL, method="POST", data=payload, headers=_DEFAULT_HEADERS
+    )
 
-class ParseError(Exception):
-    pass
+    resp = urllib.request.urlopen(req)
+    if resp.status != 200:
+        raise InvalidResponse(resp)
 
-
-class InvalidResponse(Exception):
-    pass
-
-
-def parse_(buff):
-    def get_day(slot):
-        return next(slot.parent.children)
-
-    soup = bs4.BeautifulSoup(buff, features="html5lib")
-    slots = soup.select("td")
-    if not slots:
-        raise NoData()
-
-    results = {}
-    day = None
-
-    for slot in slots:
-        if slot.text:
-            day = slot.text
-            results[day] = False
-        else:
-            classes = slot.attrs.get("class")
-            if "pasado" not in classes and "ocupado" not in classes:
-                results[day] = True
-
-    if len(results) != 7:
-        raise ParseError()
-
-    return results
+    return resp.read()
 
 
 def parse(buff):
@@ -89,7 +106,7 @@ def parse(buff):
 
     slots = soup.select("td")
     if not slots:
-        raise NoData()
+        raise NoSlots()
 
     ret = []
     for row in soup.select("table#tablaDocs tr"):
@@ -115,19 +132,11 @@ def parse(buff):
     return ret
 
 
-def _get_monday(base=None, weeks_ahead=0):
-    if base is None:
-        base = datetime.datetime.now()
-    base = base - datetime.timedelta(days=base.weekday())
-
-    return base + datetime.timedelta(days=7 * weeks_ahead)
-
-
-def query(center_code, vehicle_class=VehicleClass.LIGHT, date=None):
+def query(center=Center.CASTELLO, vehicle_size=VehicleSize.LIGHT, date=None):
     date = _get_monday(date)
-    buff = fetch(
-        center_code=center_code, vehicle_class=vehicle_class, date=date
-    ).decode("utf-8")
+    buff = fetch(center=center, vehicle_size=vehicle_size, date=date).decode(
+        "utf-8"
+    )
 
     data = parse(buff)
     data = [
@@ -147,76 +156,119 @@ def query(center_code, vehicle_class=VehicleClass.LIGHT, date=None):
     return data
 
 
-def fetch(center_code, vehicle_class=VehicleClass.LIGHT, date=None):
-    payload = dict(
-        ajax="cargarDatosTablaFechas",
-        fecha=date.strftime("%Y-%m-%d"),
-        centro=center_code,
-        tipoVehiculo=vehicle_class.value,
+def _get_monday(base=None, weeks_ahead=0):
+    if base is None:
+        base = datetime.datetime.now()
+    base = base - datetime.timedelta(days=base.weekday())
+
+    return base + datetime.timedelta(days=7 * weeks_ahead)
+
+
+def _show_for_machines(data):
+    data = [str(dt) for dt in data]
+    print(json.dumps(data))
+    return
+
+
+def _show_for_humans(data):
+    if data:
+        for dt in data:
+            dtstr = dt.strftime("%d/%m/%Y (%H:%M)")
+            print(f"😺 Fecha libre: {dtstr}")
+
+    else:
+        print("😿 Sin fechas")
+
+
+class NoSlots(Exception):
+    pass
+
+
+class ParseError(Exception):
+    pass
+
+
+class InvalidResponse(Exception):
+    pass
+
+
+def main(argv):
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Dump available slots in JSON format",
     )
-    payload = urllib.parse.urlencode(payload)
-    req = urllib.request.Request(
-        _QUERY_URL, method="POST", data=payload, headers=_DEFAULT_HEADERS
+    parser.add_argument(
+        "--quick", action="store_true", help="Just print first available slot"
     )
-    resp = urllib.request.urlopen(req)
-    if resp.status != 200:
-        raise InvalidResponse(resp)
+    parser.add_argument(
+        "--weeks",
+        dest="weeks_ahead",
+        type=int,
+        default=6,
+        help="How many weeks ahead to check",
+    )
 
-    return resp.read()
+    parser.add_argument(
+        "--center",
+        choices=["castello", "port-sagunt", "vila-real", "vinaros"],
+        default="castello",
+        help="ITV center",
+    )
+    parser.add_argument(
+        "--vehicle",
+        dest="vehicle_size",
+        choices=["light", "heavy"],
+        default="light",
+        help="Vehicle type",
+    )
+    args = parser.parse_args(argv)
+    args.center = Center.from_arg(args.center)
+    args.vehicle = VehicleSize.from_arg(args.vehicle_size)
 
+    custom_query = functools.partial(
+        query, center=args.center, vehicle_size=args.vehicle
+    )
 
-def main():
-    sess = requests.Session()
+    available = []
 
-    found = False
-    weeks_ahead = 0
-
-    # Initial date is past monday (or today if it's monday)
-    basedate = datetime.datetime.now()
-    basedate = basedate - datetime.timedelta(days=basedate.weekday())
-
-    while True:
-        if weeks_ahead >= 10:
-            print("😿 Sin fechas")
+    for i in itertools.count():
+        if i >= args.weeks_ahead:
             break
 
-        date = basedate + datetime.timedelta(days=7 * weeks_ahead)
-
-        # Fetch data or die
+        date = _get_monday(weeks_ahead=i)
+        # print(f"Check {date!r}")
         try:
-            buff = fetch(sess, "1201", date=date)
-        except InvalidResponse:
-            print("🙀 Error al cargar datos")
+            results = custom_query(date=date)
+
+        except (InvalidResponse, ParseError):
+            print("💥 Error interno", file=sys.stderr)
+            return
+
+        except NoSlots:
             break
 
-        # Parse data (die if no slots found)
-        try:
-            data = parse(buff)
-        except NoData:
-            print("😿 Sin fechas")
+        week_free_slots = [dt for (dt, available) in results if available]
+        if not week_free_slots:
+            time.sleep(3 + random.randint(-2, 2))
+            continue
+
+        if args.quick:
+            available = [week_free_slots[0]]
             break
+        else:
+            available.extend(week_free_slots)
 
-        available_dates = [d for (d, available) in data.items() if available]
-        if available_dates:
-            for d in available_dates:
-                print(f"😺 Fecha libre: {d}")
-
-            break
-
-        weeks_ahead += 1
-
-
-def test_parse():
-    import sys
-
-    with open(sys.argv[1]) as fh:
-        data = parse(fh.read())
-        import ipdb
-
-        ipdb.set_trace()
-        pass
+    if json:
+        _show_for_machines(available)
+    else:
+        _show_for_humans(available)
 
 
 if __name__ == "__main__":
-    main()
-    # fetch(requests.Session())
+    import sys
+
+    main(sys.argv[1:])

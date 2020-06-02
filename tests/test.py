@@ -8,7 +8,7 @@ from unittest.mock import patch
 import itv
 
 
-def fetch(center_code, vehicle_class=itv.VehicleClass.LIGHT, date=None):
+def fetch(center, vehicle_size, date=None):
     samplename = date.strftime("%Y-%m-%d.html")
     return read_sample(samplename)
 
@@ -24,19 +24,19 @@ def idx_data(data):
 
 
 class ParserTest(unittest.TestCase):
-    def test_simple_no_slots(self):
+    def test_unavailable_slots(self):
         data = itv.parse(read_sample("2020-06-01.html"))
         data = dict(map(idx_data, data))
         self.assertFalse(any(data.values()))
 
-    def test_with_available(self):
+    def test_available_slots(self):
         data = itv.parse(read_sample("2020-06-08.html"))
         data = dict(map(idx_data, data))
         self.assertTrue(any(data.values()))
         self.assertTrue(data[('06', '10', '18', '30')])
 
-    def test_no_agenda(self):
-        with self.assertRaises(itv.NoData):
+    def test_no_slots(self):
+        with self.assertRaises(itv.NoSlots):
             itv.parse(read_sample("2020-06-22.html"))
 
 
