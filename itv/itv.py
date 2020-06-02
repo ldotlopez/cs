@@ -185,6 +185,7 @@ def query(
 
 
 def _show_for_machines(data):
+    import ipdb; ipdb.set_trace(); pass
     data = [str(dt) for dt in data]
     print(json.dumps(data))
     return
@@ -247,11 +248,11 @@ def main(argv):
     )
     args = parser.parse_args(argv)
     args.center = Center.from_arg(args.center)
-    args.vehicle = VehicleSize.from_arg(args.vehicle_size)
+    args.vehicle_size = VehicleSize.from_arg(args.vehicle_size)
 
     res = query(
         center=args.center,
-        vehicle_size=args.vehicle,
+        vehicle_size=args.vehicle_size,
         weeks_ahead=args.weeks_ahead,
         quick=args.quick,
     )
