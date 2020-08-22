@@ -1,7 +1,6 @@
 import argparse
 import datetime
 import json
-import re
 import sys
 import urllib
 
@@ -100,24 +99,38 @@ def index_by_name(l):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data-file", required=False)
+    parser.add_argument("-v", "--verbose", action="store_true")
+    args = parser.parse_args(sys.argv[1:])
+
     incoming_data = []
     for url in BEACHES:
         incoming_data.extend(parse(fetch(url)))
 
     incoming_data = index_by_name(incoming_data)
 
-    try:
-        with open("data.json", encoding="utf-8") as fh:
-            data = index_by_name(json.loads(fh.read()))
-    except (IOError, FileNotFoundError):
-        data = {}
+    if args.data_file:
+        try:
+            with open(args.data_file, encoding="utf-8") as fh:
+                data = index_by_name(json.loads(fh.read()))
+        except (IOError, FileNotFoundError):
+            data = {}
 
-    for (name, x) in incoming_data.items():
-        if name not in data or x["_updated"] > data[name]["_updated"]:
-            data[name] = x
+        for (name, x) in incoming_data.items():
+            if name not in data or x["_updated"] > data[name]["_updated"]:
+                data[name] = x
+    else:
+        data = incoming_data
 
-    with open("data.json", "w+", encoding="utf-8") as fh:
-        fh.write(json.dumps(list(data.values())))
+    data = list(data.values())
+    if args.data_file:
+        with open(args.data_file, "w+", encoding="utf-8") as fh:
+            buff = json.dumps(data)
+            fh.write(buff)
+
+    if args.verbose:
+        print(json.dumps(data))
 
 
 if __name__ == "__main__":

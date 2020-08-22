@@ -5,10 +5,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-
-        #mapid {
-            width: auto;
-            height: 600px;
+        html, body, #map {
+            height: 100%;
+            width: 100%;
         }
         .flag {
             width: 48px;
@@ -37,26 +36,26 @@
         crossorigin="">
     </script>
     <script>
-        function displayFeatures(map) {
-            var features = [{"state": "warning", "name": "Playa el Pinar (Torre 4)", "lat": 0.02742, "lng": 39.990664, "_updated": 1598088780.0}, {"state": "warning", "name": "Playa el Pinar (Torre 3)", "lat": 0.0238203, "lng": 39.9859331, "_updated": 1598088780.0}, {"state": "warning", "name": "Playa el Pinar (Torre 2)", "lat": 0.0230373, "lng": 39.9828111, "_updated": 1598088780.0}, {"state": "warning", "name": "Playa el Pinar (Torre 1)", "lat": 0.0219168, "lng": 39.9798951, "_updated": 1598088780.0}, {"state": "warning", "name": "Playa Gurug\u00fa (Torre 5)", "lat": 0.0293831, "lng": 39.9963799, "_updated": 1598088840.0}, {"state": "warning", "name": "Playa Serradal (Torre 7)", "lat": 0.034, "lng": 40.009187, "_updated": 1598088900.0}, {"state": "warning", "name": "Playa Serradal (Torre 6)", "lat": 0.0304678, "lng": 40.0055111, "_updated": 1598088900.0}];
+        function showOn(map) {
+            // var data = [{"state": "warning", "name": "Playa el Pinar (Torre 4)", "lat": 0.02742, "lng": 39.990664, "_updated": 1598088780.0}, {"state": "warning", "name": "Playa el Pinar (Torre 3)", "lat": 0.0238203, "lng": 39.9859331, "_updated": 1598088780.0}, {"state": "warning", "name": "Playa el Pinar (Torre 2)", "lat": 0.0230373, "lng": 39.9828111, "_updated": 1598088780.0}, {"state": "warning", "name": "Playa el Pinar (Torre 1)", "lat": 0.0219168, "lng": 39.9798951, "_updated": 1598088780.0}, {"state": "warning", "name": "Playa Gurug\u00fa (Torre 5)", "lat": 0.0293831, "lng": 39.9963799, "_updated": 1598088840.0}, {"state": "warning", "name": "Playa Serradal (Torre 7)", "lat": 0.034, "lng": 40.009187, "_updated": 1598088900.0}, {"state": "warning", "name": "Playa Serradal (Torre 6)", "lat": 0.0304678, "lng": 40.0055111, "_updated": 1598088900.0}];
+            // displayFeatures(map, features);
 
-            var markers = _buildMarkers(features);
-            var group = new L.FeatureGroup(markers);
-            group.addTo(map);
-            map.fitBounds(group.getBounds().pad(0.1));
-        }
-/*        function displayPharmacies(map) {
             fetch('data.json')
             .then((response) => {
                 return response.json();
             })
             .then((data) => {
-                var markers = _buildMarkers(data);
-                var group = new L.FeatureGroup(markers);
-                group.addTo(map);
-                map.fitBounds(group.getBounds().pad(1.2));
+                displayFeatures(map, data);
             });
-        }*/
+
+        }
+
+        function displayFeatures(map, features) {
+            var markers = _buildMarkers(features);
+            var group = new L.FeatureGroup(markers);
+            group.addTo(map);
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
 
         function _buildMarkers(data) {
             return data.map((x) => {
@@ -74,11 +73,11 @@
 
 <body>
     <div class="ratio-16-9">
-    <div id="mapid"></div>
+    <div id="map"></div>
     </div>
 
     <script>
-        var mymap = L.map('mapid');
+        var mymap = L.map('map');
         L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
             maxZoom: 18,
             attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
@@ -88,7 +87,7 @@
             tileSize: 512,
             zoomOffset: -1
             }).addTo(mymap);
-        displayFeatures(mymap);
+        showOn(mymap);
     </script>
 </body>
 
