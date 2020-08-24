@@ -2,9 +2,13 @@ import argparse
 import datetime
 import json
 import sys
-import urllib
+from urllib import request
 
 import bs4
+
+BEACH_INFO_URL_TMPL = (
+    "https://medigrupgestion.com/playas/info-banderas?id={id}"
+)
 
 BEACHES = [
     "https://medigrupgestion.com/playas/info-banderas?id=52",
@@ -26,12 +30,6 @@ GEO = {
     "Playa Serradal (Torre 6)": (40.0055111, 0.0304678),
     "Playa Serradal (Torre 7)": (40.009187, 0.034000),
 }
-
-
-def fetch(url):
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req) as fh:
-        return fh.read()
 
 
 def parse(buff):
@@ -94,8 +92,26 @@ def parse_tower(tower):
     return {"name": name, "state": state}
 
 
-def index_by_name(l):
-    return {x["name"]: x for x in l}
+def get_info(prev=None):
+    if prev is None:
+        prev = []
+
+    curr = []
+    for url in BEACHES:
+        curr.extend(parse(_fetch(url)))
+
+    tmp = {}
+    for x in prev + curr:
+        if x["name"] not in tmp or x["_updated"] > tmp[x["name"]]["_updated"]:
+            tmp[x["name"]] = x
+
+    return list(tmp.values())
+
+
+def _fetch(url):
+    req = request.Request(url, headers={"User-Agent": UA})
+    with request.urlopen(req) as fh:
+        return fh.read()
 
 
 def main():
@@ -104,33 +120,23 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(sys.argv[1:])
 
-    incoming_data = []
-    for url in BEACHES:
-        incoming_data.extend(parse(fetch(url)))
-
-    incoming_data = index_by_name(incoming_data)
-
+    prev = []
     if args.data_file:
         try:
             with open(args.data_file, encoding="utf-8") as fh:
-                data = index_by_name(json.loads(fh.read()))
+                prev = json.loads(fh.read())
         except (IOError, FileNotFoundError):
-            data = {}
+            pass
 
-        for (name, x) in incoming_data.items():
-            if name not in data or x["_updated"] > data[name]["_updated"]:
-                data[name] = x
-    else:
-        data = incoming_data
+    info = get_info(prev)
 
-    data = list(data.values())
     if args.data_file:
         with open(args.data_file, "w+", encoding="utf-8") as fh:
-            buff = json.dumps(data)
+            buff = json.dumps(info)
             fh.write(buff)
 
     if args.verbose:
-        print(json.dumps(data))
+        print(json.dumps(info))
 
 
 if __name__ == "__main__":
