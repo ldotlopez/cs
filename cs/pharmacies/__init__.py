@@ -45,7 +45,9 @@ def get_pharmacies(now=None, city="0402"):
     resp = resp["data"]
 
     if now.hour == 21 and now.minute >= 30:
-        resp.extend(get_pharmacies(now + datetime.timedelta(days=1), city=city))
+        resp.extend(
+            get_pharmacies(now + datetime.timedelta(days=1), city=city)
+        )
 
     return [normalize(x) for x in resp]
 
@@ -59,7 +61,3 @@ def normalize(x):
         name=x["farmacia"],
         phone=x["telefono"],
     )
-
-
-if __name__ == "__main__":
-    print(json.dumps(get_pharmacies(), indent=2))
