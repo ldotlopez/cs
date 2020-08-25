@@ -1,0 +1,91 @@
+Endpoint: https://api.mobilapp.uji.es/
+
+
+
+bus/getLineas
+[
+	{
+		"label": "L1",
+		"orderId": "1",
+		"nombre": "POLIDEPORTIVO-HOSPITAL G. (L1)"},
+		/* ... */
+	},
+	/* ... */
+]
+
+
+bus/getVehiculos/<LINE_LABEL>
+[
+	{
+		"lat": 39.985226391293,
+		"lon": -0.03672884281741
+	},
+	/* ... */
+]
+
+
+bus/getPathRuta/<LINE_LABEL>
+{
+	"nodes": [
+		{
+			"id": 162,
+			"nombre": "Polideportivo Ciudad de Castell\u00f3n",
+			"lat": 39.974809025134,
+			"lon": -0.056303696608744
+		},
+		/* ... */
+	],
+    "points": [
+		{
+			"lat": 39.97485490615,
+			"lon": -0.056336850695331
+		}, 	
+		/* ... */
+	]
+}
+
+
+bus/getEstimation/<LINE_LABEL>
+[
+	{
+		"nombre": "Polideportivo Ciudad de Castell\u00f3n",
+		"id": "162",
+		"lineLabel": "L2",
+		"timeStamp": 1369649779,
+		"time": [
+			{
+				"bus": "vh_first",
+				"time": 29
+			},
+			{
+				"bus": "vh_second",
+				"time": 59
+			},
+			/* ... */
+		]
+	},
+	…
+]
+
+
+bus/getEstimation/<LINE_LABEL>/<STOP_ID>
+[
+	{
+		"nombre": "Polideportivo Ciudad de Castell\u00f3n",
+		"id": "162",
+		"lineLabel": "L2",
+		"timeStamp": 1369649779,
+		"time": [
+			{
+				"bus": "vh_first",
+				"time": 29
+			},
+			{
+				"bus": "vh_second",
+				"time": 59
+			},
+			/* ... */
+		]
+	},
+	/* ... */
+]

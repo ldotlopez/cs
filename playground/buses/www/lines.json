@@ -1,0 +1,87 @@
+[
+   {
+      "orderId" : 5,
+      "label" : "L2",
+      "nombre" : "POLIDEPORTIVO-HOSPITAL G. (L2)"
+   },
+   {
+      "nombre" : "BASÍLICA LLEDÓ-ROTONDA MAGDALE",
+      "label" : "L3",
+      "orderId" : 6
+   },
+   {
+      "nombre" : "ESTACION INTERMODAL-GR GRAPA",
+      "label" : "L9",
+      "orderId" : 12
+   },
+   {
+      "orderId" : 13,
+      "label" : "L10",
+      "nombre" : "TETUAN-UJI-S.LORENZO"
+   },
+   {
+      "nombre" : "COMISARÍA - UJI",
+      "label" : "L12",
+      "orderId" : 15
+   },
+   {
+      "orderId" : 19,
+      "nombre" : "HOSPITAL GENERAL-FFCC-SALERA",
+      "label" : "L16"
+   },
+   {
+      "orderId" : 7,
+      "nombre" : "GRAPA-CEU-GRAPA",
+      "label" : "L4"
+   },
+   {
+      "nombre" : "MONTAÑA-GRUPOS",
+      "label" : "L7",
+      "orderId" : 10
+   },
+   {
+      "orderId" : 10,
+      "nombre" : "MONTAÑA-GRUPOS",
+      "label" : "L7N"
+   },
+   {
+      "nombre" : "HOSP. GRAL. HOSP. GRAL (CIRC)",
+      "label" : "L8",
+      "orderId" : 11
+   },
+   {
+      "orderId" : 4,
+      "nombre" : "L1 POLIDEPORTIVO-HOSPITAL",
+      "label" : "L1"
+   },
+   {
+      "orderId" : 9,
+      "label" : "L6",
+      "nombre" : "PASEO RIBALTA-BENADRESA "
+   },
+   {
+      "nombre" : "RAFALAFENA-UJI",
+      "label" : "L11",
+      "orderId" : 14
+   },
+   {
+      "orderId" : 18,
+      "nombre" : "POLIDEP.-FFCC-UJI",
+      "label" : "L15"
+   },
+   {
+      "orderId" : 1,
+      "label" : "T1",
+      "nombre" : "TRAM: UJI - GRAU"
+   },
+   {
+      "nombre" : "TRAM: (NO EN USO) LLANÇA PLATJA IDA",
+      "label" : "LTR1",
+      "orderId" : 2
+   },
+   {
+      "label" : "LTR2",
+      "nombre" : "TRAM: LLANÇA SERRADAL VUELTA",
+      "orderId" : 3
+   }
+]

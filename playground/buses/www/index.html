@@ -1,0 +1,137 @@
+<html>
+
+<head>
+<title>Farmacias Castellón</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        #mapid {
+            width: auto;
+            height: 600px;
+        }
+    </style>
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
+        integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+        crossorigin=""/>
+    <script
+        src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+        integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+        crossorigin="">
+    </script>
+    <script>
+        /*
+        [
+            {
+            "orderId" : 5,
+            "label" : "L2",
+            "nombre" : "POLIDEPORTIVO-HOSPITAL G. (L2)"
+            },
+            ...
+        */
+        async function display(map) {
+            map._vehicles = {};
+
+            // let resp = await fetch('lines.json');
+            let resp = await fetch('https://api.mobilapp.uji.es/bus/getLineas', {mode: 'cors'});
+            let lines = [];
+            try {
+                lines = await resp.json();
+            }
+            catch (e) {
+                console.log(`Error parsing lines`);
+                return;
+            }
+
+            let vehicles = {};
+            for (let idx = 0; idx < lines.length; idx++) {
+                vehicles[lines[idx].label] = await getVehicles(lines[idx].label);
+                console.log("Got: ", vehicles[lines[idx].label].length);
+            }
+
+            console.log("Delete old positions");
+            var prevLines = Object.keys(mymap._vehicles);
+            for (let lineId in prevLines) {
+                map._vehicles[lineId].removeLayer(map);
+                delete map._vehicles[lineId];
+            };
+
+            console.log("Add new positions");
+            for (let lineId in vehicles) {
+                let markers = vehicles[lineId].map(_asMarker);
+                markers = markers.filter((x) => {return x !== null});
+                console.log(`Line ${lineId} has ${markers.length} localized vehicles`);
+                if (markers.length == 0) {
+                    continue;
+                }
+
+                let group = new L.FeatureGroup(markers);
+                group.addTo(map);
+                map._vehicles[lineId] = group;
+            }
+        }
+
+        async function getVehicles(lineId) {
+            // let resp = await fetch(lineId + '.json');
+            let resp = await fetch('https://api.mobilapp.uji.es/bus/getVehiculos/' + lineId, {mode: 'cors'});
+            try {
+                let vehicles = await resp.json();
+                console.log(`${lineId}: OK`);
+                return vehicles;
+            }
+            catch (e) {
+                console.log(`${lineId}: Error`);
+                return [];
+            }
+        }
+
+
+        function _asMarker(x) {
+            if (isNaN(parseFloat(x.lon)) || isNaN(parseFloat(x.lat))) {
+                return null;
+            }
+
+            var marker = new L.Marker([x.lat, x.lon]);
+            /*
+            marker.bindPopup(
+                `<b>${x.name} - <a href="tel:${x.phone}">${x.phone}</a></b><br/>
+                ${x.address}<br/>
+                ${x.schedule}`);
+            */
+            return marker;
+        }
+
+        async function main(map) {
+            let count = 1;
+            while (true) {
+                console.log(`Update map #${count}...`);
+                await display(mymap);
+                await new Promise(r => setTimeout(r, 2000));
+                count++;
+            }
+        }
+        </script>
+</head>
+
+<body>
+    <div class="ratio-16-9">
+    <div id="mapid"></div>
+    </div>
+
+    <script>
+        var mymap = L.map('mapid').setView([40, -0], 13);
+        L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+            maxZoom: 18,
+            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+                '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+                'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+            id: 'mapbox/streets-v11',
+            tileSize: 512,
+            zoomOffset: -1
+            }).addTo(mymap);
+        main(mymap);
+    </script>
+</body>
+
+</html>
