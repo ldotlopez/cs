@@ -1,7 +1,7 @@
 <html>
 
 <head>
-<title>Farmacias Castellón</title>
+<title>Playas Castellón</title>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
@@ -45,7 +45,7 @@
                 return response.json();
             })
             .then((data) => {
-                displayFeatures(map, data);
+                displayFeatures(map, data.beaches);
             });
 
         }
