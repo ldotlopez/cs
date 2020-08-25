@@ -8,26 +8,27 @@ BEACH_INFO_URL_TMPL = (
     "https://medigrupgestion.com/playas/info-banderas?id={id}"
 )
 
-BEACHES = [
-    "https://medigrupgestion.com/playas/info-banderas?id=52",
-    "https://medigrupgestion.com/playas/info-banderas?id=53",
-    "https://medigrupgestion.com/playas/info-banderas?id=54",
-]
-
 UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:61.0) "
     "Gecko/20100101 Firefox/61.0"
 )
 
-GEO = {
-    "Playa el Pinar (Torre 1)": (39.9798951, 0.0219168),
-    "Playa el Pinar (Torre 2)": (39.9828111, 0.0230373),
-    "Playa el Pinar (Torre 3)": (39.9859331, 0.0238203),
-    "Playa el Pinar (Torre 4)": (39.990664, 0.027420),
-    "Playa Gurugú (Torre 5)": (39.9963799, 0.0293831),
-    "Playa Serradal (Torre 6)": (40.0055111, 0.0304678),
-    "Playa Serradal (Torre 7)": (40.009187, 0.034000),
-}
+
+def latlng_for_name(name):
+    # Those coors are from google maps, they are in (lnt, lat form), reversed
+    # from expected
+    geodata = {
+        "Playa el Pinar (Torre 1)": (39.9798951, 0.0219168),
+        "Playa el Pinar (Torre 2)": (39.9828111, 0.0230373),
+        "Playa el Pinar (Torre 3)": (39.9859331, 0.0238203),
+        "Playa el Pinar (Torre 4)": (39.990664, 0.027420),
+        "Playa Gurugú (Torre 5)": (39.9963799, 0.0293831),
+        "Playa Serradal (Torre 6)": (40.0055111, 0.0304678),
+        "Playa Serradal (Torre 7)": (40.009187, 0.034000),
+    }
+
+    latlng = geodata[name]
+    return (latlng[1], latlng[0])
 
 
 def parse(buff):
@@ -56,15 +57,14 @@ def parse(buff):
                 minute=t0.minute,
             )
             curr_date = curr_date.timestamp()
-            print("TS: %s => %s" % (t0str, str(curr_date)))
 
         elif block.select_one(".torre_datos"):
-            tower_data = parse_tower(block)
+            tower_data = parse_tower_element(block)
             tower_data["name"] = "%s (%s)" % (beach, tower_data.pop("name"))
             try:
-                latlng = GEO[tower_data["name"]]
-                tower_data["lat"] = latlng[1]
-                tower_data["lng"] = latlng[0]
+                latlng = latlng_for_name(tower_data["name"])
+                tower_data["lat"] = latlng[0]
+                tower_data["lng"] = latlng[1]
             except KeyError:
                 print("W: no geo for f{tower_data.name}", file=sys.stderr)
                 tower_data["lat"] = None
@@ -75,53 +75,8 @@ def parse(buff):
 
     return ret
 
-    # time_blocks = [
-    #     x
-    #     for x in soup.select(".container-azulado")
-    #     if x.select_one(".titulo").text.startswith("Hora:")
-    # ]
-    # import ipdb
 
-    # ipdb.set_trace()
-    # pass
-
-    # ret = []
-    # for block in time_blocks:
-    #     t0 = datetime.datetime.strptime(
-    #         block.select_one(".titulo").text[6:], "%H:%M"
-    #     )
-    #     updated = datetime.datetime(
-    #         year=now.year,
-    #         month=now.month,
-    #         day=now.day,
-    #         hour=t0.hour,
-    #         minute=t0.minute,
-    #     )
-    #     # updated = updated.timestamp()
-    #     print(
-    #         "TS: %s => %s"
-    #         % (block.select_one(".titulo").text[6:], str(updated))
-    #     )
-
-    #     for tower in block.select(".torre_datos"):
-    #         tower_data = parse_tower(tower)
-    #         tower_data["name"] = "%s (%s)" % (beach, tower_data.pop("name"))
-    #         try:
-    #             latlng = GEO[tower_data["name"]]
-    #             tower_data["lat"] = latlng[1]
-    #             tower_data["lng"] = latlng[0]
-    #         except KeyError:
-    #             print("W: no geo for f{tower_data.name}", file=sys.stderr)
-    #             tower_data["lat"] = None
-    #             tower_data["lng"] = None
-
-    #         tower_data["_updated"] = updated
-    #         ret.append(tower_data)
-
-    # return ret
-
-
-def parse_tower(tower):
+def parse_tower_element(tower):
     t = [("roja", "danger"), ("amarilla", "warning"), ("verde", "ok")]
 
     name = tower.select_one(".torre_nombre").text.strip()
@@ -135,24 +90,18 @@ def parse_tower(tower):
     return {"name": name, "state": state}
 
 
-def get_info(prev=None):
-    if prev is None:
-        prev = []
+def get_info(id):
+    url = BEACH_INFO_URL_TMPL.format(id=id)
+    req = request.Request(url, headers={"User-Agent": UA})
+    with request.urlopen(req) as fh:
+        return parse(fh.read())
 
-    curr = []
-    for url in BEACHES:
-        curr.extend(parse(_fetch(url)))
 
+def merge(infos):
     tmp = {}
 
-    for x in prev + curr:
+    for x in infos:
         if x["name"] not in tmp or x["_updated"] > tmp[x["name"]]["_updated"]:
             tmp[x["name"]] = x
 
     return list(tmp.values())
-
-
-def _fetch(url):
-    req = request.Request(url, headers={"User-Agent": UA})
-    with request.urlopen(req) as fh:
-        return fh.read()

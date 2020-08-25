@@ -1,4 +1,12 @@
 import argparse
+#     if args.data_file:
+#         with open(args.data_file, "w+", encoding="utf-8") as fh:
+#             buff = json.dumps(info)
+#             fh.write(buff)
+import functools
+#     if args.verbose:
+#         print(json.dumps(info))
+import itertools
 import json
 import sys
 import time
@@ -12,17 +20,24 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(sys.argv[1:])
 
-    prev = {'beaches': []}
+    prev = []
     if args.data_file:
         try:
             with open(args.data_file, encoding="utf-8") as fh:
-                prev = json.loads(fh.read())
-        except (IOError, FileNotFoundError):
+                prev = json.loads(fh.read())['beaches']
+        except (IOError, FileNotFoundError, ValueError, KeyError, TypeError):
             pass
 
+    beach_data = list(
+        itertools.chain.from_iterable(
+            [beaches.get_info(id) for id in ["52", "53", "54"]]
+        )
+    )
+    beach_data = beaches.merge(prev + beach_data)
+
     info = {
-        '_updated': int(time.mktime(time.localtime())),
-        'beaches': beaches.get_info(prev['beaches'])
+        "_updated": int(time.mktime(time.localtime())),
+        "beaches": beach_data,
     }
 
     if args.data_file:
