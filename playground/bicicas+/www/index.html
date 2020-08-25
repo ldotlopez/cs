@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+  
+  <head>
+    <title>Bicicas Plus!</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+  </head>
+  
+  <body>
+    <div id="map"></div>
+  
+    <div id="menu">
+      <h1>Bicicas Plus</h1>
+
+      <label for="start-address">From:</label>
+      <input id="start-address" name="start-address" type="text">
+      <input id="start-latlng" name="start-latlng" type="hidden">
+      <!-- <a id="geolocation-button"><img src="assets/geolocation.png"></a> -->
+
+      <label for="end-address">To:</label>
+      <input id="end-address" name="end-address" type="text">
+      <input id="end-latlng" name="end-latlng" type="hidden">
+
+      <a id="go" href="#">Go!</a> 
+    </div>
+
+    <script type="text/javascript">
+      function updateLatLngInput(name, place) {
+        document.getElementById(name).value = place.geometry.location.lat() + "," + place.geometry.location.lng();
+      }
+
+      function getPointFromInput(name) {
+        var val = document.getElementById(name).value;
+        
+        var parts = val.split(',');
+        if (parts.length != 2) {
+          throw "Cant parse latlng field " + name;
+        }
+
+        lat = parseFloat(parts[0]);
+        lng = parseFloat(parts[1]);
+        if (lat === NaN || lng === NaN) {
+          throw "Cant parse latlng field " + name;
+        }
+
+        return new Point(lat, lng);
+      }
+
+      function main() {
+        
+        /* Create app */
+        var app = new App(document.getElementById('map'), {
+          center: {
+            lat: 39.9849703,
+            lng: -0.0504709
+          },
+          zoom: 15
+        });
+        app.calculateRoute(
+          new Point(39.995087, -0.039852),
+          new Point(39.980053, -0.036400));
+        return;
+
+        startAddressCompletion = new AddressCompletion(
+          document.getElementById('start-address'),
+          function (place) {
+            updateLatLngInput('start-latlng', place);
+          },
+          new Point(39.9849703, -0.0504709),
+          5*1000);
+
+        endAddressCompletion = new AddressCompletion(
+          document.getElementById('end-address'),
+          function (place) {
+            updateLatLngInput('end-latlng', place);
+          },
+          new Point(39.9849703, -0.0504709),
+          5*1000);
+
+        document.getElementById('go').onclick = function(ev) {
+          startPoint = getPointFromInput('start-latlng');
+          endPoint = getPointFromInput('end-latlng');
+          console.log([startPoint, endPoint]);
+          app.setStart(startPoint);
+          app.setEnd(endPoint);
+          // app.calculateRoute(startPoint, endPoint);
+        };
+      }
+
+    </script>
+
+    <script type="text/javascript" src="app.js"></script>
+    <script async defer
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-tABUA5y4yiqYWROerjNXp-Jft3VCbE8&libraries=places&callback=main">
+    </script>
+  </body>
+
+</html>

@@ -1,0 +1,36 @@
+body {
+    font-family: Helvetica;
+}
+
+#menu {
+    position: absolute;
+    top: 0px;
+}
+
+#menu h1 {
+    display: inline-block;
+}
+
+#address {
+    width: 40%;
+}
+
+#go {
+    background: #115;
+    border-color: #eee;
+    color: #eee;
+    padding: 0.4em;
+    border-radius: 0.5em;
+}
+
+#map {
+    height: 90%;
+    width: 100%;
+    position: absolute;
+    top: 10%;    
+}
+
+.geolocation-button img {
+	width: 20px;
+	height: 20px;	
+}
