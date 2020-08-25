@@ -1,6 +1,7 @@
 import argparse
-import sys
 import json
+import sys
+import time
 
 from cs import beaches
 
@@ -11,7 +12,7 @@ def main():
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(sys.argv[1:])
 
-    prev = []
+    prev = {'beaches': []}
     if args.data_file:
         try:
             with open(args.data_file, encoding="utf-8") as fh:
@@ -19,7 +20,10 @@ def main():
         except (IOError, FileNotFoundError):
             pass
 
-    info = beaches.get_info(prev)
+    info = {
+        '_updated': int(time.mktime(time.localtime())),
+        'beaches': beaches.get_info(prev['beaches'])
+    }
 
     if args.data_file:
         with open(args.data_file, "w+", encoding="utf-8") as fh:

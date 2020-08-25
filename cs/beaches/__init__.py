@@ -39,27 +39,27 @@ def parse(buff):
     soup = bs4.BeautifulSoup(buff, features="html5lib")
     beach = soup.select_one(".nombre-playa").text.strip()
 
-    time_blocks = [
-        x
-        for x in soup.select(".container-azulado")
-        if x.select_one(".titulo").text.startswith("Hora:")
-    ]
-
     ret = []
-    for block in time_blocks:
-        t0 = datetime.datetime.strptime(
-            block.select_one(".titulo").text[6:], "%H:%M"
-        )
-        updated = datetime.datetime(
-            year=now.year,
-            month=now.month,
-            day=now.day,
-            hour=t0.hour,
-            minute=t0.minute,
-        ).timestamp()
 
-        for tower in block.select(".torre_datos"):
-            tower_data = parse_tower(tower)
+    curr_date = None
+    for block in soup.select(".container-azulado .col-lg-12"):
+        title = block.select_one(".titulo")
+        if title and title.text.startswith("Hora:"):
+            t0str = title.text[6:]
+            t0 = datetime.datetime.strptime(t0str, "%H:%M")
+
+            curr_date = datetime.datetime(
+                year=now.year,
+                month=now.month,
+                day=now.day,
+                hour=t0.hour,
+                minute=t0.minute,
+            )
+            curr_date = curr_date.timestamp()
+            print("TS: %s => %s" % (t0str, str(curr_date)))
+
+        elif block.select_one(".torre_datos"):
+            tower_data = parse_tower(block)
             tower_data["name"] = "%s (%s)" % (beach, tower_data.pop("name"))
             try:
                 latlng = GEO[tower_data["name"]]
@@ -70,10 +70,55 @@ def parse(buff):
                 tower_data["lat"] = None
                 tower_data["lng"] = None
 
-            tower_data["_updated"] = updated
+            tower_data["_updated"] = curr_date
             ret.append(tower_data)
 
     return ret
+
+    # time_blocks = [
+    #     x
+    #     for x in soup.select(".container-azulado")
+    #     if x.select_one(".titulo").text.startswith("Hora:")
+    # ]
+    # import ipdb
+
+    # ipdb.set_trace()
+    # pass
+
+    # ret = []
+    # for block in time_blocks:
+    #     t0 = datetime.datetime.strptime(
+    #         block.select_one(".titulo").text[6:], "%H:%M"
+    #     )
+    #     updated = datetime.datetime(
+    #         year=now.year,
+    #         month=now.month,
+    #         day=now.day,
+    #         hour=t0.hour,
+    #         minute=t0.minute,
+    #     )
+    #     # updated = updated.timestamp()
+    #     print(
+    #         "TS: %s => %s"
+    #         % (block.select_one(".titulo").text[6:], str(updated))
+    #     )
+
+    #     for tower in block.select(".torre_datos"):
+    #         tower_data = parse_tower(tower)
+    #         tower_data["name"] = "%s (%s)" % (beach, tower_data.pop("name"))
+    #         try:
+    #             latlng = GEO[tower_data["name"]]
+    #             tower_data["lat"] = latlng[1]
+    #             tower_data["lng"] = latlng[0]
+    #         except KeyError:
+    #             print("W: no geo for f{tower_data.name}", file=sys.stderr)
+    #             tower_data["lat"] = None
+    #             tower_data["lng"] = None
+
+    #         tower_data["_updated"] = updated
+    #         ret.append(tower_data)
+
+    # return ret
 
 
 def parse_tower(tower):
@@ -99,6 +144,7 @@ def get_info(prev=None):
         curr.extend(parse(_fetch(url)))
 
     tmp = {}
+
     for x in prev + curr:
         if x["name"] not in tmp or x["_updated"] > tmp[x["name"]]["_updated"]:
             tmp[x["name"]] = x
