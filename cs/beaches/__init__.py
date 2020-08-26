@@ -1,8 +1,12 @@
 import datetime
+import logging
 import sys
 from urllib import request
 
 import bs4
+
+LOGGER = logging.getLogger("cs.beaches")
+
 
 BEACH_INFO_URL_TMPL = (
     "https://medigrupgestion.com/playas/info-banderas?id={id}"
@@ -94,7 +98,16 @@ def get_info(id):
     url = BEACH_INFO_URL_TMPL.format(id=id)
     req = request.Request(url, headers={"User-Agent": UA})
     with request.urlopen(req) as fh:
-        return parse(fh.read())
+        ret = parse(fh.read())
+
+    if not ret:
+        logmsg = f"No data found in url '{url}'"
+        LOGGER.warning(logmsg)
+    else:
+        logmsg = f"{len(ret)} entries found in '{url}'"
+        LOGGER.debug(logmsg)
+
+    return ret
 
 
 def merge(infos):

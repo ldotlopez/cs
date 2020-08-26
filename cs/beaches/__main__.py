@@ -1,13 +1,8 @@
 import argparse
-#     if args.data_file:
-#         with open(args.data_file, "w+", encoding="utf-8") as fh:
-#             buff = json.dumps(info)
-#             fh.write(buff)
 import functools
-#     if args.verbose:
-#         print(json.dumps(info))
 import itertools
 import json
+import logging
 import sys
 import time
 
@@ -15,6 +10,9 @@ from cs import beaches
 
 
 def main():
+    logging.basicConfig()
+    beaches.LOGGER.setLevel(logging.DEBUG)
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-file", required=False)
     parser.add_argument("-v", "--verbose", action="store_true")
@@ -24,7 +22,7 @@ def main():
     if args.data_file:
         try:
             with open(args.data_file, encoding="utf-8") as fh:
-                prev = json.loads(fh.read())['beaches']
+                prev = json.loads(fh.read())["beaches"]
         except (IOError, FileNotFoundError, ValueError, KeyError, TypeError):
             pass
 
