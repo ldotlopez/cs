@@ -26,7 +26,9 @@
     </script>
     <script>
         function displayPharmacies(map) {
-            fetch('data.json')
+            let dt = new Date();
+            let stamp = "" + dt.getTime() + "" + dt.getMilliseconds();;
+            fetch(`data.json?${stamp}`)
             .then((response) => {
                 return response.json();
             })
