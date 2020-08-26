@@ -53,7 +53,7 @@
             var markers = _buildMarkers(features);
             var group = new L.FeatureGroup(markers);
             group.addTo(map);
-            map.fitBounds(group.getBounds().pad(0.1));
+            map.fitBounds(group.getBounds().pad(0.2));
         }
 
         function _buildMarkers(data) {
