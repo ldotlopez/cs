@@ -38,7 +38,7 @@
                 return response.json();
             })
             .then((data) => {
-                var markers = _buildMarkers(data);
+                var markers = _buildMarkers(data.pharmacies);
                 var group = new L.FeatureGroup(markers);
                 group.addTo(map);
                 map.fitBounds(group.getBounds().pad(0.2));
