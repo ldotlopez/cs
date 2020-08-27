@@ -18,13 +18,13 @@ def latlng_for_name(name):
     # Those coors are from google maps, they are in (lnt, lat form), reversed
     # from expected
     geodata = {
-        "Playa el Pinar (Torre 1)": (39.9798951, 0.0219168),
-        "Playa el Pinar (Torre 2)": (39.9828111, 0.0230373),
-        "Playa el Pinar (Torre 3)": (39.9859331, 0.0238203),
-        "Playa el Pinar (Torre 4)": (39.990664, 0.027420),
-        "Playa Gurugú (Torre 5)": (39.9963799, 0.0293831),
-        "Playa Serradal (Torre 6)": (40.0055111, 0.0304678),
-        "Playa Serradal (Torre 7)": (40.009187, 0.034000),
+        "Playa el Pinar (Torre 1)": (39.98079291981047,0.024510398622323848),
+        "Playa el Pinar (Torre 2)": (39.9834547415974,0.02541826554436355),
+        "Playa el Pinar (Torre 3)": (39.9868120639394,0.026553099196893193),
+        "Playa el Pinar (Torre 4)": (39.98970550870041,0.02730965496524629),
+        "Playa Gurugú (Torre 5)": (39.99814455843709, 0.029516773481117475),
+        "Playa Serradal (Torre 6)": (40.005393021582826, 0.03265219929561969),
+        "Playa Serradal (Torre 7)": (40.00934147350583, 0.03411735154554396),
     }
 
     latlng = geodata[name]
@@ -61,6 +61,7 @@ def parse(buff):
         elif block.select_one(".torre_datos"):
             tower_data = parse_tower_element(block)
             tower_data["name"] = "%s (%s)" % (beach, tower_data.pop("name"))
+
             try:
                 latlng = latlng_for_name(tower_data["name"])
                 tower_data["lat"] = latlng[0]
@@ -101,7 +102,7 @@ def merge(infos):
     tmp = {}
 
     for x in infos:
-        if x["name"] not in tmp or x["_updated"] > tmp[x["name"]]["_updated"]:
+        if x["name"] not in tmp or x["_updated"] >= tmp[x["name"]]["_updated"]:
             tmp[x["name"]] = x
 
     return list(tmp.values())
