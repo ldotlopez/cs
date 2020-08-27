@@ -14,21 +14,6 @@
             height: 100%;
             width: 100%;
         }
-        .flag {
-            width: 48px;
-            height: 48px;
-            border: 3px solid #000000;
-        }
-        .flag-ok {
-            background: #00FF00 url('green.png');
-        }
-        .flag-warning {
-            background: #FFFF00 url('yellow.png');
-        }
-        .flag-danger {
-            background: #FF0000 url('red.png');
-        }
-
     </style>
     <link
         rel="stylesheet"
@@ -41,36 +26,179 @@
         crossorigin="">
     </script>
     <script>
-        function showOn(map) {
-            let dt = new Date();
-            let stamp = "" + dt.getTime() + "" + dt.getMilliseconds();
-            fetch(`data.json?${stamp}`)
-            .then((response) => {
-                return response.json();
-            })
-            .then((data) => {
-                displayFeatures(map, data.beaches);
-            });
+        'use strict';
+
+        class BaseMap {
+            getAPIToken () {
+                return 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw';
+            }
+
+            getDataURL() {
+                return 'data.json';
+            }
+
+            getBoundPad() {
+                return 0;
+            }
+
+            constructor(targetDiv) {
+                this.buildMap(targetDiv);
+                setTimeout(async () => {
+                    var data = await app.getData();
+                    app.displayFeatures(data.features);
+                    app.centerOnUser();
+                }, 1);
+            }
+
+            buildMap(targetDiv) {
+                this.map = L.map(targetDiv);
+                this.map.setView([40.0, 0], 15);
+                let apiToken = this.getAPIToken();
+                let tileLayer = L.tileLayer(
+                    `https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=${apiToken}`,
+                    {
+                        maxZoom: 18,
+                        attribution: (
+                            'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+                            '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+                            'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>'),
+                        id: 'mapbox/streets-v11',
+                        tileSize: 512,
+                        zoomOffset: -1
+                    }
+                );
+                tileLayer.addTo(this.map);
+            }
+
+            async getData() {
+                let dt = new Date();
+                let stamp = "" + dt.getTime() + "" + dt.getMilliseconds();
+                let response = await fetch(`data.json?ts=${stamp}`);
+                let json = await response.json();
+                return this.normalizeData(json);
+            }
+
+            displayFeatures(features) {
+                this.markers = features.map((x) => {
+                    return this.buildMarker(x);
+                });
+
+                var group = new L.FeatureGroup(this.markers);
+                group.addTo(this.map);
+
+                var pad = this.getBoundPad();
+                this.map.fitBounds(group.getBounds().pad(pad));
+            }
+
+            normalizeData(json) {
+                return {
+                    '_updated': json._updated
+                };
+            }
+
+            buildMarker(featureData) {
+                throw 'Not implemented';
+            }
+
+            centerOnUser() {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        let user = {'lat': position.coords.latitude, 'lng': position.coords.longitude};
+                        let features = this.markers.map((m) => { return m.getLatLng()});
+                        this.overview(user, features);
+                    });
+            }
+
+            overview(user, features) {
+                function distanceTo(a, b) {
+                    let c1 = Math.abs(a.lat - b.lat);
+                    let c2 = Math.abs(a.lng - b.lng);
+                    return Math.sqrt(c1**2 + c2**2);
+                }
+
+                function distancesFrom(x, features) {
+                    return features.map((f) => {
+                        return [f, distanceTo(x, f)];
+                    })
+                    .sort((a, b) => {
+                        if (a[1] < b[1]) { return -1; }
+                        if (a[1] > b[1]) { return  1; }
+                        return 0;
+                    });
+                }
+
+                var myIcon = L.icon({iconUrl: 'user.png'});
+                L.marker(user, {icon: myIcon}).addTo(this.map);
+
+                let distances = distancesFrom(user, features);
+
+                let nearest = distances[0][0];
+                let farest = distances[distances.length-1][0];
+                let middle = {'lat': ((user.lat+nearest.lat) / 2), 'lng': ((user.lng+nearest.lng) / 2)};
+
+                let delta_x = Math.abs(middle.lat - farest.lat);
+                let delta_y = Math.abs(middle.lng - farest.lng);
+
+                this.map.fitBounds([
+                    [middle.lat-delta_x, middle.lng-delta_y],
+                    [middle.lat+delta_x, middle.lng+delta_y]
+                ]);
+
+                // new L.Marker([middle.lat-diff_x, middle.lng-diff_y]).addTo(this.map);
+                // new L.Marker([middle.lat+diff_x, middle.lng+diff_y]).addTo(this.map);
+                // this.map.panTo(middle, {"animate": true});
+            }
 
         }
 
-        function displayFeatures(map, features) {
-            var markers = _buildMarkers(features);
-            var group = new L.FeatureGroup(markers);
-            group.addTo(map);
-            map.fitBounds(group.getBounds().pad(0.2));
-        }
+        class BeachesMap extends BaseMap {
+            constructor (targetDiv) {
+                super(targetDiv);
+                this.labels = {
+                    ok: "Perfecto",
+                    warning: "Precaución",
+                    danger: "Baño prohibido"
+                }
+                this.icons = {
+                    ok: L.icon({iconUrl: 'green.png'}),
+                    warning: L.icon({iconUrl: 'warning.png'}),
+                    danger: L.icon({iconUrl: 'red.png'}),
+                }
+            }
 
-        function _buildMarkers(data) {
-            return data.map((x) => {
-                var marker = new L.Marker(
-                    [x.lng, x.lat],
-                    {'icon': new L.divIcon({className: `flag flag-${x.state}`})});
-                marker.bindPopup(
-                `<b>${x.name}`);
+            getBoundPad() {
+                return 0.2;
+            }
+
+            normalizeData(json) {
+                return {
+                    '_updated': json._updated,
+                    'features': json.beaches
+                };
+            }
+
+            buildMarker(f) {
+                function pad(n){return n<10 ? '0'+n : n}
+
+                let marker = new L.Marker(
+                    [f.lng, f.lat],
+                    // {'icon': this.icons[f.state]}
+                );
+
+                let dt = new Date(f._updated * 1000);
+                let datestr = (
+                    `${pad(dt.getHours())}:${pad(dt.getMinutes())} - ` +
+                    `${dt.getDate()}/${dt.getMonth()+1}/${dt.getFullYear()}`
+                );
+                let popupMarkup = (
+                    `<b>${f.name}</b><br />` +
+                    `Estado: ${this.labels[f.state]}<br />` +
+                    `<i>(Actualizado: ${datestr})</i>`
+                );
+                marker.bindPopup(popupMarkup);
 
                 return marker;
-            });
+            }
         }
     </script>
 </head>
@@ -81,17 +209,7 @@
     </div>
 
     <script>
-        var mymap = L.map('map');
-        L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
-            maxZoom: 18,
-            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
-                '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
-                'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-            id: 'mapbox/streets-v11',
-            tileSize: 512,
-            zoomOffset: -1
-            }).addTo(mymap);
-        showOn(mymap);
+        var app = new BeachesMap('map');
     </script>
 </body>
 
