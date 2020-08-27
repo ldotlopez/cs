@@ -31,6 +31,7 @@
     </script>
     <script>
         'use strict';
+
         class BaseMap {
             getAPIToken () {
                 return 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw';
@@ -46,6 +47,11 @@
 
             constructor(targetDiv) {
                 this.buildMap(targetDiv);
+                setTimeout(async () => {
+                    var data = await app.getData();
+                    app.displayFeatures(data.features);
+                    app.centerOnUser();
+                }, 1);
             }
 
             buildMap(targetDiv) {
@@ -99,32 +105,54 @@
             }
 
             centerOnUser() {
-                function findNearest(user, features) {
-                    let minDist = Infinity;
-                    let ret = null;
-                    features.forEach((f) => {
-                        let a = Math.abs(user.lat - f.lat);
-                        let b = Math.abs(user.lng - f.lng);
-                        let dist = Math.sqrt(a**2 + b**2);
-                        if (dist < minDist) {
-                            minDist = dist;
-                            ret = f;
-                        }
-                    });
-
-                    return ret;
-                }
-
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         let user = {'lat': position.coords.latitude, 'lng': position.coords.longitude};
                         let features = this.markers.map((m) => { return m.getLatLng()});
-                        let nearest = findNearest(user, features);
-                        this.map.panTo(nearest, {"animate": true});
-                    },
-                    () => {}
-                );
+                        this.overview(user, features);
+                    });
             }
+
+            overview(user, features) {
+                function distanceTo(a, b) {
+                    let c1 = Math.abs(a.lat - b.lat);
+                    let c2 = Math.abs(a.lng - b.lng);
+                    return Math.sqrt(c1**2 + c2**2);
+                }
+
+                function distancesFrom(x, features) {
+                    return features.map((f) => {
+                        return [f, distanceTo(x, f)];
+                    })
+                    .sort((a, b) => {
+                        if (a[1] < b[1]) { return -1; }
+                        if (a[1] > b[1]) { return  1; }
+                        return 0;
+                    });
+                }
+
+                var myIcon = L.icon({iconUrl: 'user.png'});
+                L.marker(user, {icon: myIcon}).addTo(this.map);
+
+                let distances = distancesFrom(user, features);
+
+                let nearest = distances[0][0];
+                let farest = distances[distances.length-1][0];
+                let middle = {'lat': ((user.lat+nearest.lat) / 2), 'lng': ((user.lng+nearest.lng) / 2)};
+
+                let delta_x = Math.abs(middle.lat - farest.lat);
+                let delta_y = Math.abs(middle.lng - farest.lng);
+
+                this.map.fitBounds([
+                    [middle.lat-delta_x, middle.lng-delta_y],
+                    [middle.lat+delta_x, middle.lng+delta_y]
+                ]);
+
+                // new L.Marker([middle.lat-diff_x, middle.lng-diff_y]).addTo(this.map);
+                // new L.Marker([middle.lat+diff_x, middle.lng+diff_y]).addTo(this.map);
+                // this.map.panTo(middle, {"animate": true});
+            }
+
         }
 
         class PharmaciesMap extends BaseMap {
@@ -160,11 +188,6 @@
 
     <script>
         var app = new PharmaciesMap('map');
-        setTimeout(async () => {
-            var data = await app.getData();
-            app.displayFeatures(data.features);
-            // app.centerOnUser();
-        }, 1);
     </script>
 </body>
 
