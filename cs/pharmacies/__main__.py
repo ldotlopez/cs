@@ -4,10 +4,25 @@ import argparse
 import datetime
 import json
 import logging
+import sys
+import urllib.error
 
 from cs import pharmacies
 
 LOGGER = logging.getLogger("cs.pharmacies")
+
+
+def _pharma_get(*args, **kwargs):
+    try:
+        return pharmacies.get_pharmacies(*args, **kwargs)
+    except urllib.error.URLError as e:
+        logmsg = f"Network error: {e!r}"
+        LOGGER.error(logmsg)
+        sys.exit(1)
+    except json.decoder.JSONDecodeError as e:
+        logmsg = f"Invalid JSON response '{e.doc[:15]}'"
+        LOGGER.error(logmsg)
+        sys.exit(1)
 
 
 def main():
@@ -22,11 +37,11 @@ def main():
 
     args = parser.parse_args()
 
-    data = pharmacies.get_pharmacies()
+    data = _pharma_get()
 
     now = datetime.datetime.now()
     if now.hour == 21 and now.minute >= 30:
-        data.extend(get_pharmacies(now=now + datetime.timedelta(days=1)))
+        data.extend(_pharma_get(now=now + datetime.timedelta(days=1)))
 
     data = {
         "_updated": now.timestamp(),
