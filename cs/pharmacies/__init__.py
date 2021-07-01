@@ -100,5 +100,6 @@ def _fetch(now=None, city="0402"):
         data=payload,
         headers={"User-Agent": UA},
     )
+
     with urllib.request.urlopen(req) as fh:
         return fh.read().decode("iso-8859-15")
