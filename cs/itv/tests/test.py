@@ -37,54 +37,56 @@ class UtilsMixin:
 
 class ParserTest(unittest.TestCase, UtilsMixin):
     def test_unavailable_slots(self):
-        data = itv.parse(read_sample("2020-06-08.html"))
+        data = itv.parse(read_sample("2021-07-05.html"))
         data = dict(map(idx_data, data))
         self.assertFalse(any(data.values()))
 
     def test_available_slots(self):
-        data = itv.parse(read_sample("2020-06-15.html"))
-        self.assertParsedValue(data, [2020, 6, 17, 17, 30], False)
-        self.assertParsedValue(data, [2020, 6, 17, 17, 45], True)
-        self.assertParsedValue(data, [2020, 6, 17, 18, 00], False)
+        data = itv.parse(read_sample("2021-07-26.html"))
+        self.assertParsedValue(data, [2021, 7, 30, 7, 15], False)
+        self.assertParsedValue(data, [2021, 7, 30, 7, 45], True)
+        self.assertParsedValue(data, [2021, 7, 30, 8, 00], False)
 
     def test_no_slots(self):
         with self.assertRaises(itv.NoSlots):
-            itv.parse(read_sample("2020-06-29.html"))
+            itv.parse(read_sample("2021-08-30.html"))
 
 
 class QueryTest(unittest.TestCase, UtilsMixin):
     def test_query_without_slots(self):
         with patch("itv.fetch", side_effect=fetch) as mock_method:
-            date = datetime.datetime(year=2020, month=6, day=8)
+            date = datetime.datetime(year=2021, month=7, day=5)
             res = dict(itv.query(date=date))
 
             self.assertTrue(not all(res.values()))
 
     def test_query_with_slots(self):
         with patch("itv.fetch", side_effect=fetch) as mock_method:
-            date = datetime.datetime(year=2020, month=6, day=15)
+            date = datetime.datetime(year=2021, month=7, day=26)
             res = dict(itv.query(date=date))
 
             self.assertTrue(any(res.values()))
-            self.assertParsedValue(res, [2020, 6, 17, 17, 45], True)
+            self.assertParsedValue(res, [2021, 7, 30, 7, 45], True)
 
     def test_query_with_slots_and_weeks_ahead(self):
         with patch("itv.fetch", side_effect=fetch) as mock_method:
-            date = datetime.datetime(year=2020, month=6, day=8)
+            date = datetime.datetime(year=2021, month=7, day=19)
             res = dict(itv.query(date=date, weeks_ahead=2))
 
             self.assertTrue(any(res.values()))
-            self.assertParsedValue(res, [2020, 6, 17, 17, 45], True)
+            self.assertParsedValue(res, [2021, 7, 30, 7, 45], True)
 
     def test_query_with_slots_and_weeks_ahead_and_beyond(self):
         with patch("itv.fetch", side_effect=fetch) as mock_method:
-            date = datetime.datetime(year=2020, month=6, day=8)
-            res = itv.query(date=date, weeks_ahead=5)
+            date = datetime.datetime(year=2021, month=7, day=5)
+            res = itv.query(date=date, weeks_ahead=4)
 
-            self.assertParsedValue(res, [2020, 6, 17, 17, 30], False)
-            self.assertParsedValue(res, [2020, 6, 17, 17, 45], True)
-            self.assertParsedValue(res, [2020, 6, 17, 18, 00], False)
+            self.assertParsedValue(res, [2021, 7, 30, 7, 15], False)
+            self.assertParsedValue(res, [2021, 7, 30, 7, 45], True)
+            self.assertParsedValue(res, [2021, 7, 30, 8, 00], False)
 
+
+    pass
 
 if __name__ == "__main__":
     unittest.main()

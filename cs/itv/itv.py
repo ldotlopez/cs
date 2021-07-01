@@ -4,6 +4,7 @@ import datetime
 import enum
 import itertools
 import json
+# import logging
 import random
 import re
 import time
@@ -11,23 +12,28 @@ import urllib
 
 import bs4
 
-_ORIGIN = "http://www.itvcvr.com"
-_QUERY_URL = "http://www.itvcvr.com/citaprevia/index.php"
+# logging.basicConfig()
+# _LOGGER = logging.getLogger("cs.itv")
+# _LOGGER.setLevel(logging.DEBUG)
+
+_ORIGIN = "https://www.itvcvr.com"
+_QUERY_URL = "https://www.itvcvr.com/citaprevia/index.php"
 _UA = (
-    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:76.0)"
-    "Gecko/20100101 Firefox/76.0"
+    "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:89.0) "
+    "Gecko/20100101 Firefox/89.0"
 )
 _DEFAULT_HEADERS = {
-    "User-Agent": _UA,
     "Accept": "*/*",
     "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
-    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-    "X-Requested-With": "XMLHttpRequest",
-    "Origin": _ORIGIN,
-    "Connection": "close",
-    "Referer": _QUERY_URL,
-    "Pragma": "no-cache",
     "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    "DNT": "1",
+    "Origin": _ORIGIN,
+    "Pragma": "no-cache",
+    "Referer": "https://www.itvcvr.com/citaprevia/index.php",
+    "User-Agent": _UA,
+    "X-Requested-With": "XMLHttpRequest",
 }
 
 
@@ -76,6 +82,9 @@ def fetch(center, vehicle_size, date):
     req = urllib.request.Request(
         _QUERY_URL, method="POST", data=payload, headers=_DEFAULT_HEADERS
     )
+
+    # _LOGGER.debug(f"Fetch: {_QUERY_URL} ")
+    # _LOGGER.debug(f"Payload: {payload!r} ")
 
     resp = urllib.request.urlopen(req)
     if resp.status != 200:
@@ -185,10 +194,8 @@ def query(
 
 
 def _show_for_machines(data):
-    import ipdb; ipdb.set_trace(); pass
     data = [str(dt) for dt in data]
     print(json.dumps(data))
-    return
 
 
 def _show_for_humans(data):
